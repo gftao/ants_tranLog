@@ -53,4 +53,4 @@ func DoHandles(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## 该方法架构还不错
+## 该架构还不错 :blush:

@@ -193,7 +193,7 @@ func (t *TranLogWorker) UpdRspTranInfo(tx *gorm.DB, dbtl *models.DbTranLog) gerr
 			if err != nil {
 				return gerror.New(80050, godefs.TRN_SYS_ERROR, nil, "查询源交易流水失败："+t.TransMsg.MsgBody.Cld_order_id)
 			}
-			if t.TransMsg.MsgBody.Tran_amt == dbtl.Tran_amt {
+			if t.TransMsg.MsgBody.Tran_amt == dbt.Tran_amt {
 				dbt.Trans_st = sutil.ReplaceAtIndex(dbt.Trans_st, godefs.PRTA_STAT_FLG, godefs.PRT_IDX)
 			} else {
 				dbt.Trans_st = sutil.ReplaceAtIndex(dbt.Trans_st, godefs.PRTP_STAT_FLG, godefs.PRT_IDX)

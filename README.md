@@ -10,7 +10,7 @@
 
 ``` go
 //定义任务 task 接口
-type TranLogWorker interface{ DoWork() }
+type ITranLogTask interface{ DoTask() }
 
 func DoHandleInit() error {
 	var err error
@@ -26,7 +26,7 @@ func DoHandleInit() error {
 	p, err = ants.NewPoolWithFunc(sz, func(i interface{}) error {
 		//pool池接受task 并字处理。
 		t := i.(TranLogWorker)
-		t.DoWork()
+		t.DoTask()
 		return nil
 	})
 	if err != nil {
@@ -43,7 +43,7 @@ func DoHandleInit() error {
 ``` go
 func DoHandles(w http.ResponseWriter, r *http.Request) {
 	//初始化task 实例并serve到pool池
-	t := &digest.TranLogWorker{W: w, R: r}
+	t := &digest.TranLogTask{W: w, R: r}
 	t.NodeName = "DoLogs"
 	t.Id = IdGenerator.GetUint32()
 	t.Wg.Add(1)

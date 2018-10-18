@@ -22,7 +22,7 @@ type TranLogWorker struct {
 	Wg       sync.WaitGroup
 }
 
-func (t *TranLogWorker) DoLogs() {
+func (t *TranLogWorker) DoWork() {
 	t.Info("开始处理请求")
 	gerr := t.getParamsInit()
 	if gerr != nil {

@@ -16,7 +16,7 @@ var (
 	//iw          *goSnowFlake.IdWorker
 )
 
-type TranLogWorker interface{ DoWork() }
+type ITranLogTask interface{ DoTask() }
 
 func DoHandleInit() error {
 	var err error
@@ -30,8 +30,8 @@ func DoHandleInit() error {
 	clusterId := config.IntDefault("clusterId", 0)
 
 	p, err = ants.NewPoolWithFunc(sz, func(i interface{}) error {
-		t := i.(TranLogWorker)
-		t.DoWork()
+		t := i.(ITranLogTask)
+		t.DoTask()
 		return nil
 	})
 	if err != nil {
@@ -53,7 +53,7 @@ func DoHandleClose() {
 
 func DoHandles(w http.ResponseWriter, r *http.Request) {
 
-	t := &digest.TranLogWorker{W: w, R: r}
+	t := &digest.TranLogTask{W: w, R: r}
 	t.NodeName = "DoLogs"
 	t.Id = IdGenerator.GetUint32()
 	t.Wg.Add(1)

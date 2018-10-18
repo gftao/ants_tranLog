@@ -14,7 +14,7 @@ import (
 	"tranLog/models/sutil"
 )
 
-type TranLogWorker struct {
+type TranLogTask struct {
 	W        http.ResponseWriter
 	R        *http.Request
 	TransMsg models.TransMessage
@@ -22,7 +22,7 @@ type TranLogWorker struct {
 	Wg       sync.WaitGroup
 }
 
-func (t *TranLogWorker) DoWork() {
+func (t *TranLogTask) DoWork() {
 	t.Info("开始处理请求")
 	gerr := t.getParamsInit()
 	if gerr != nil {
@@ -39,7 +39,7 @@ func (t *TranLogWorker) DoWork() {
 	t.Wg.Done()
 }
 
-func (t *TranLogWorker) getParamsInit() gerror.IError {
+func (t *TranLogTask) getParamsInit() gerror.IError {
 	body, err := ioutil.ReadAll(t.R.Body)
 	if err != nil {
 		t.Error("读取请求报文失败", err)
@@ -62,7 +62,7 @@ func (t *TranLogWorker) getParamsInit() gerror.IError {
 	return nil
 }
 
-func (t *TranLogWorker) insertDb() gerror.IError {
+func (t *TranLogTask) insertDb() gerror.IError {
 	dbc := gormdb.GetInstance()
 	dbc.SetLogger(t.GetEntry())
 	msgBody := t.TransMsg.MsgBody
@@ -88,7 +88,7 @@ func (t *TranLogWorker) insertDb() gerror.IError {
 	}
 	return nil
 }
-func (t *TranLogWorker) sendMsgToClient() {
+func (t *TranLogTask) sendMsgToClient() {
 	TransMsg := &models.TransMessage{}
 	TransMsg.MsgBody = &models.TransParams{}
 	TransMsg.MsgBody.Tran_cd = t.TransMsg.MsgBody.Tran_cd
@@ -108,7 +108,7 @@ func (t *TranLogWorker) sendMsgToClient() {
 	return
 }
 
-func (t *TranLogWorker) rejectMsg(resp_cd, resp_msg string, e error) {
+func (t *TranLogTask) rejectMsg(resp_cd, resp_msg string, e error) {
 	t.Info("交易失败:"+resp_msg, e)
 	if t.TransMsg.MsgBody == nil {
 		t.TransMsg.MsgBody = &models.TransParams{}
@@ -135,7 +135,7 @@ func (t *TranLogWorker) rejectMsg(resp_cd, resp_msg string, e error) {
 	return
 }
 
-func (t *TranLogWorker) UpdRspTranInfo(tx *gorm.DB, dbtl *models.DbTranLog) gerror.IError {
+func (t *TranLogTask) UpdRspTranInfo(tx *gorm.DB, dbtl *models.DbTranLog) gerror.IError {
 	err := tx.Set("gorm:query_option", "FOR UPDATE").Where(" order_id = ? ",
 		t.TransMsg.MsgBody.Order_id).Find(&dbtl).Error
 	if err != nil {

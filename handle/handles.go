@@ -61,7 +61,6 @@ func DoHandles(w http.ResponseWriter, r *http.Request) {
 	t.NodeName = "DoLogs"
 	t.Id = IdGenerator.GetUint32()
 	err := p.Serve(t)
-
 	if err != nil {
 		t.Errorf("Serve failed:%s", err)
 		w.WriteHeader(http.StatusNotAcceptable)

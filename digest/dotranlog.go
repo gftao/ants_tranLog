@@ -24,7 +24,6 @@ type TranLogTask struct {
 }
 
 func (t *TranLogTask) DoTask() {
-
 	t.Info("开始处理请求")
 	ctx := t.R.Context()
 	defer t.Cancel()

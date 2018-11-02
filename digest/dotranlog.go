@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"golib/modules/run"
 	"golib/gerror"
-	"sync"
 	"golib/modules/gormdb"
 	"github.com/jinzhu/gorm"
 	"tranLog/godefs"
 	"tranLog/models/sutil"
+	"context"
+	"runtime"
 )
 
 type TranLogTask struct {
@@ -19,24 +20,43 @@ type TranLogTask struct {
 	R        *http.Request
 	TransMsg models.TransMessage
 	run.BaseWorker
-	Wg       sync.WaitGroup
+	Cancel   context.CancelFunc
 }
 
-func (t *TranLogTask) DoWork() {
+func (t *TranLogTask) DoTask() {
+
 	t.Info("开始处理请求")
-	gerr := t.getParamsInit()
-	if gerr != nil {
-		t.rejectMsg(gerr.GetErrorCode(), gerr.GetErrorString(), gerr)
+	ctx := t.R.Context()
+	defer t.Cancel()
+	select {
+	case err := <-func() chan error {
+		result := make(chan error, 1)
+		go func() {
+			gerr := t.getParamsInit()
+			if gerr != nil {
+				t.rejectMsg(gerr.GetErrorCode(), gerr.GetErrorString(), gerr)
+				result <- gerr
+				return
+			}
+			gerr = t.insertDb()
+			if gerr != nil {
+				t.rejectMsg(gerr.GetErrorCode(), gerr.GetErrorString(), gerr)
+				result <- gerr
+				return
+			}
+			t.sendMsgToClient()
+
+			runtime.Goexit()
+		}()
+		return result
+	}():
+		t.Infof("请求结束:%s", err)
+		return
+	case <-ctx.Done():
+		t.Info("请求异常")
 		return
 	}
-	t.SetCldOrderId(t.TransMsg.MsgBody.Order_id)
-	gerr = t.insertDb()
-	if gerr != nil {
-		t.rejectMsg(gerr.GetErrorCode(), gerr.GetErrorString(), gerr)
-		return
-	}
-	t.sendMsgToClient()
-	t.Wg.Done()
+
 }
 
 func (t *TranLogTask) getParamsInit() gerror.IError {
@@ -58,6 +78,8 @@ func (t *TranLogTask) getParamsInit() gerror.IError {
 		t.Error("decode json body fail", err)
 		return gerror.New(51006, "96", err, "decode json body fail")
 	}
+	t.SetCldOrderId(t.TransMsg.MsgBody.Order_id)
+
 	t.Infof("get msg_body:%+v", t.TransMsg.MsgBody)
 	return nil
 }
@@ -102,6 +124,7 @@ func (t *TranLogTask) sendMsgToClient() {
 		t.Error("发送报文失败", err)
 		return
 	}
+	//t.W.WriteHeader(http.StatusOK)
 
 	t.Info("发送应答成功:", slen, t.TransMsg.ToString())
 

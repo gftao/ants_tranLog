@@ -3,11 +3,12 @@ package handle
 import (
 	"net/http"
 	"github.com/panjf2000/ants"
-	"tranLog/digest"
 	"fmt"
 	"golib/modules/idManager"
 	"golib/modules/config"
 	"errors"
+	"tranLog/digest"
+	"context"
 )
 
 var (
@@ -30,7 +31,10 @@ func DoHandleInit() error {
 	clusterId := config.IntDefault("clusterId", 0)
 
 	p, err = ants.NewPoolWithFunc(sz, func(i interface{}) error {
-		t := i.(ITranLogTask)
+		t, ok := i.(ITranLogTask)
+		if !ok {
+			return errors.New("parameter is not ITranLogTask")
+		}
 		t.DoTask()
 		return nil
 	})
@@ -52,12 +56,20 @@ func DoHandleClose() {
 }
 
 func DoHandles(w http.ResponseWriter, r *http.Request) {
-
-	t := &digest.TranLogTask{W: w, R: r}
+	ctx, cancel := context.WithCancel(r.Context())
+	t := &digest.TranLogTask{W: w, R: r, Cancel: cancel}
 	t.NodeName = "DoLogs"
 	t.Id = IdGenerator.GetUint32()
-	t.Wg.Add(1)
-	p.Serve(t)
-	t.Wg.Wait()
+	err := p.Serve(t)
+
+	if err != nil {
+		t.Errorf("Serve failed:%s", err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
 	t.Infof("running goroutines: %d", p.Running())
+	select {
+	case <-ctx.Done():
+		t.Infof("request cancelled\n")
+	}
 }
